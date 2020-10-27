@@ -32,4 +32,24 @@ weights50 = np.arange(1,51)
 mmm['wma200'] = mmm['Price'].rolling(200).apply(lambda x: np.dot(x,weights200)/weights200.sum())
 mmm['wma50'] = mmm['Price'].rolling(50).apply(lambda x : np.dot(x, weights50)/weights50.sum())
 
+plt.figure(figsize = (12,6))
+plt.plot(mmm['wma50'], label="SMA", color="red")
+plt.plot(mmm['wma200'], label="WMA", color="green")
+plt.legend()
+plt.grid()
+plt.show()
 
+vz = pd.read_csv("./data/VZ.csv")
+vz.index = pd.to_datetime(vz.Date)
+vz['Price'] = vz['Close']
+vz = vz.drop(['Open','High','Low','Close','Adj Close'], axis=1)
+
+vz['ema50'] = vz['Price'].ewm(span=50, min_periods=50).mean()
+vz['ema200'] = vz['Price'].ewm(span=200, min_periods=200).mean()
+
+plt.figure(figsize = (12,8))
+plt.plot(vz['ema50'], label='50-day EMA',color='grey')
+plt.plot(vz['ema200'],label='200-day EMA',color='red')
+plt.legend()
+plt.grid()
+plt.show()
