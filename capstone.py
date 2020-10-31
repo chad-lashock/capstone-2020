@@ -55,4 +55,61 @@ plt.plot(vz['ema50'], label='50-day EMA',color='grey')
 plt.plot(vz['ema200'],label='200-day EMA',color='red')
 plt.legend()
 plt.grid()
+plt.title("VZ Exponential Moving Averages")
+plt.ylabel("Price ($)")
+plt.xlabel("Date")
 plt.show()
+
+
+#Relative strength
+
+#Input is array of price changes
+def calculate_rsi(x):
+    sum_of_gains = sum([a for a in x if a > 0])
+    sum_of_changes = sum([abs(a) for a in x])
+    return sum_of_gains/sum_of_changes
+
+cat['Change'] = cat['Price'].rolling(2).apply(lambda x : x[1]-x[0])
+cat['rsi30'] = cat['Change'].rolling(30).apply(calculate_rsi)
+
+plt.figure(figsize=(12,8))
+plt.plot(cat['rsi30'].loc['2020-01-01':'2020-03-31'], label="30-day RSI", color="blue")
+plt.xticks(['2020-01-01','2020-02-01', '2020-03-01', '2020-04-01'],['Jan 1','Feb 1','Mar 1', 'Apr 1'])
+plt.legend()
+plt.grid()
+plt.title("CAT RSI Quarter 1 of 2020")
+plt.ylabel("RSI")
+plt.xlabel("Date")
+plt.ylim(bottom=0.2, top=0.7)
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
