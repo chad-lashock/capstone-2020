@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 cat = pd.read_csv("./data/CAT.csv")
 cat.index = pd.to_datetime(cat.Date)
-
 cat['Price'] = cat['Close']
 cat = cat.drop(['Open','High','Low','Close','Adj Close'], axis=1)
 
@@ -16,6 +15,28 @@ plt.plot(cat['Price'], label="Price", color="red")
 plt.legend()
 plt.grid()
 plt.show()
+
+
+def calculate_sma_profit(long_period, short_period, df):
+    long_ma = list(df['Price'].rolling(long_period).mean())
+    short_ma = list(df['Price'].rolling(short_period).mean())
+    
+    bank = 1000
+    
+    if short_ma[long_period-1] < long_ma[long_period-1]:
+        short_ma_under = True
+    else:
+        short_ma_under = False
+    
+    for x in range(long_period, len(long_ma)):
+        if short_ma_under == True and short_ma[x] > long_ma[x]:
+            # buy
+            short_ma_under = False
+        elif short_ma_under == False and short_ma[x] < long_ma[x]:
+            # sell
+            short_ma_under = True
+            
+
 
 
 
@@ -67,20 +88,20 @@ plt.show()
 def calculate_rsi(x):
     sum_of_gains = sum([a for a in x if a > 0])
     sum_of_changes = sum([abs(a) for a in x])
-    return sum_of_gains/sum_of_changes
+    return (sum_of_gains/sum_of_changes)*100
 
 cat['Change'] = cat['Price'].rolling(2).apply(lambda x : x[1]-x[0])
 cat['rsi30'] = cat['Change'].rolling(30).apply(calculate_rsi)
 
 plt.figure(figsize=(12,8))
 plt.plot(cat['rsi30'].loc['2020-01-01':'2020-03-31'], label="30-day RSI", color="blue")
-plt.xticks(['2020-01-01','2020-02-01', '2020-03-01', '2020-04-01'],['Jan 1','Feb 1','Mar 1', 'Apr 1'])
+#plt.xticks(['2020-01-01','2020-02-01', '2020-03-01', '2020-04-01'],['Jan 1','Feb 1','Mar 1', 'Apr 1'])
 plt.legend()
 plt.grid()
 plt.title("CAT RSI Quarter 1 of 2020")
 plt.ylabel("RSI")
 plt.xlabel("Date")
-plt.ylim(bottom=0.2, top=0.7)
+plt.ylim(bottom=20, top=80)
 plt.show()
 
 
