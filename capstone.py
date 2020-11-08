@@ -3,9 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 cat = pd.read_csv("./data/CAT.csv")
-cat.index = pd.to_datetime(cat.Date)
+cat['Date'] = pd.to_datetime(cat['Date'])
 cat['Price'] = cat['Close']
+#cat.index = pd.to_datetime(cat.Date)
 cat = cat.drop(['Open','High','Low','Close','Adj Close'], axis=1)
+cat['Date'] = cat['Date'].dt.strftime('%m/%d/%Y')
 
 cat['sma200'] = cat['Price'].rolling(200).mean()
 cat['sma50'] = cat['Price'].rolling(50).mean()
@@ -16,12 +18,22 @@ plt.legend()
 plt.grid()
 plt.show()
 
+plt.figure(figsize = (12,6))
+plt.plot(cat['sma200'], label='200-day', color='blue')
+plt.plot(cat['sma50'], label='50-day', color='red')
+plt.legend()
+plt.grid()
+plt.show()
 
+# function to calculate simple moving average profit
 def calculate_sma_profit(long_period, short_period, df):
     long_ma = list(df['Price'].rolling(long_period).mean())
     short_ma = list(df['Price'].rolling(short_period).mean())
+    results = pd.DataFrame(columns = ['Date','Action', 'Price', 'Bank', 'Shares'])
+
     
     bank = 1000
+    shares = 0
     
     if short_ma[long_period-1] < long_ma[long_period-1]:
         short_ma_under = True
@@ -32,11 +44,39 @@ def calculate_sma_profit(long_period, short_period, df):
         if short_ma_under == True and short_ma[x] > long_ma[x]:
             # buy
             short_ma_under = False
+            if bank > 0:
+                shares = bank / df['Price'].loc[x]
+                bank = 0
+                results = results.append({'Date': df['Date'].loc[x], 'Action': 'Buy', 'Price': df['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
+                                         ignore_index=True)
+                
+                
         elif short_ma_under == False and short_ma[x] < long_ma[x]:
             # sell
             short_ma_under = True
+            if bank == 0:
+                bank = shares * df['Price'].loc[x]
+                shares = 0
+                results = results.append({'Date':df['Date'].loc[x], 'Action': 'Sell', 'Price': df['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
+                                         ignore_index=True)
+    
+    
+    if bank == 0:
+        bank = shares * df['Price'].loc[x]
+        
+    return bank, results
+    
             
+#Calculate sma profit for standard 200-day and 50-day
+calculate_sma_profit(200, 50, cat)
 
+sma_results = pd.DataFrame(columns=["short-period", "long-period", "bank"])
+
+for x in range(10,201,5):
+    for y in range(x+5,201,5):
+        bank, result = calculate_sma_profit(y, x, cat)
+        sma_results = sma_results.append({"short-period":x,"long-period":y,"bank":bank}, ignore_index=True)
+    
 
 
 
