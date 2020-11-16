@@ -40,7 +40,7 @@ def calculate_sma_profit(long_period, short_period, df):
                                          ignore_index=True)
     
     
-    if bank == 0:
+    if shares > 0:
         bank = shares * df['Price'].loc[x]
         
     return bank, results
@@ -89,7 +89,7 @@ def calculate_wma_profit(long_period, short_period, df):
                                          ignore_index=True)
     
     
-    if bank == 0:
+    if shares > 0:
         bank = shares * df['Price'].loc[x]
         
     return bank, results
@@ -132,7 +132,7 @@ def calculate_ema_profit(long_period, short_period, df):
                                          ignore_index=True)
     
     
-    if bank == 0:
+    if shares > 0:
         bank = shares * df['Price'].loc[x]
         
     return bank, results
@@ -144,19 +144,19 @@ def calculate_ema_profit(long_period, short_period, df):
 # number of days to use to calculate the RSI value
 def calculate_rsi_profit_50(df, period):
     df_copy = df.copy()
-    df_copy['Price_change'] = df_copy['Price'].rolling(2).apply(lambda x : x[1]-x[0])
+    df_copy['Price_change'] = df_copy['Price'].rolling(2).apply(lambda x : x[1]-x[0], raw=True)
     df_copy['rsi'] = df_copy['Price_change'].rolling(period).apply(calculate_rsi)
     results = pd.DataFrame(columns = ['Date','Action', 'Price', 'Bank', 'Shares'])
     
     bank = 1000
     shares = 0
     
-    if df_copy['rsi'] < 50:
+    if df_copy['rsi'].loc[period] < 50:
         below_50 = True
     else:
         below_50 = False
     
-    for x in range(period, len(df_copy)):
+    for x in range(period+1, len(df_copy)):
         if below_50 == True and df_copy['rsi'].loc[x] > 50:
             #buy
             below_50 = False
@@ -170,8 +170,8 @@ def calculate_rsi_profit_50(df, period):
             #sell
             below_50 = True
             if bank == 0:
-                shares = bank / df_copy['Price'].loc[x]
-                bank = 0
+                bank = shares * df_copy['Price'].loc[x]
+                shares = 0
                 results = results.append({'Date': df_copy['Date'].loc[x], 'Action': 'Sell', 'Price': df_copy['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
                                          ignore_index=True)
         

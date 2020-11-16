@@ -219,13 +219,36 @@ plt.show()
 #The following calculates the results of each CAT, MMM, and VZ  
 # using the relative strength index# strategy. 
 
-bank, result = calculate_rsi_profit_50(cat, 30)
+#CAT
+
+rsi50_results_cat = pd.DataFrame(columns=["Period", "Bank"])
+
+for x in range(10,201,5):
+    bank, result = calculate_rsi_profit_50(cat, x)
+    rsi50_results_cat = rsi50_results_cat.append({"Period": x, "Bank": bank}, ignore_index=True)
+    
+rsi50_results_cat = rsi50_results_cat.sort_values(by="Bank",ascending=False)
 
 
+#MMM
 
+rsi50_results_mmm = pd.DataFrame(columns=["Period", "Bank"])
 
+for x in range(10,201,5):
+    bank, result = calculate_rsi_profit_50(mmm, x)
+    rsi50_results_mmm = rsi50_results_mmm.append({"Period": x, "Bank": bank}, ignore_index=True)
+    
+rsi50_results_mmm = rsi50_results_mmm.sort_values(by="Bank",ascending=False)
 
+#VZ
 
+rsi50_results_vz = pd.DataFrame(columns=["Period", "Bank"])
+
+for x in range(10,201,5):
+    bank, result = calculate_rsi_profit_50(vz, x)
+    rsi50_results_vz = rsi50_results_vz.append({"Period": x, "Bank": bank}, ignore_index=True)
+    
+rsi50_results_vz = rsi50_results_vz.sort_values(by="Bank",ascending=False)
 
 
 
