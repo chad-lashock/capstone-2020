@@ -180,9 +180,37 @@ def calculate_rsi_profit_50(df, period):
         
     return bank, results
     
+
+def calculate_rsi_profit_70_30(df, period):
+    df_copy = df.copy()
+    df_copy['Price_change'] = df_copy['Price'].rolling(2).apply(lambda x : x[1]-x[0], raw=True)
+    df_copy['rsi'] = df_copy['Price_change'].rolling(period).apply(calculate_rsi)
+    results = pd.DataFrame(columns = ['Date','Action', 'Price', 'Bank', 'Shares'])
     
-    
-    
+    bank = 1000
+    shares = 0
+        
+    for x in range(period+1, len(df_copy)):
+        if df_copy['rsi'].loc[x-1] >= 30 and df_copy['rsi'].loc[x] < 30:
+            #buy
+            if bank > 0:
+                shares = bank / df_copy['Price'].loc[x]
+                bank = 0
+                results = results.append({'Date': df_copy['Date'].loc[x], 'Action': 'Buy', 'Price': df_copy['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
+                                         ignore_index=True)
+                
+        elif df_copy['rsi'].loc[x-1] <= 70 and df_copy['rsi'].loc[x] > 70:
+            #sell
+            if bank == 0:
+                bank = shares * df_copy['Price'].loc[x]
+                shares = 0
+                results = results.append({'Date': df_copy['Date'].loc[x], 'Action': 'Sell', 'Price': df_copy['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
+                                         ignore_index=True)
+                
+    if shares > 0:
+        bank = shares * df_copy['Price'].loc[x]
+        
+    return bank, results
     
     
     

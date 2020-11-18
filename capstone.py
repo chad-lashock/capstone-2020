@@ -6,6 +6,7 @@ from functions import calculate_wma_profit
 from functions import calculate_ema_profit
 from functions import calculate_rsi
 from functions import calculate_rsi_profit_50
+from functions import calculate_rsi_profit_70_30
 
 #Load and organize data
 
@@ -217,7 +218,7 @@ plt.show()
 
 
 #The following calculates the results of each CAT, MMM, and VZ  
-# using the relative strength index# strategy. 
+# using the relative strength index crossover 50 strategy. 
 
 #CAT
 
@@ -249,6 +250,69 @@ for x in range(10,201,5):
     rsi50_results_vz = rsi50_results_vz.append({"Period": x, "Bank": bank}, ignore_index=True)
     
 rsi50_results_vz = rsi50_results_vz.sort_values(by="Bank",ascending=False)
+
+
+#The following calculates the results of each CAT, MMM, and VZ  
+# using the relative strength index crossover 70/30 strategy. 
+
+#CAT
+
+rsi7030_results_cat = pd.DataFrame(columns=["Period", "Bank"])
+
+for x in range(10,201,5):
+    bank, result = calculate_rsi_profit_70_30(cat, x)
+    rsi7030_results_cat = rsi7030_results_cat.append({"Period": x, "Bank": bank}, ignore_index=True)
+    
+rsi7030_results_cat = rsi7030_results_cat.sort_values(by="Bank", ascending = False)
+
+
+#MMM
+rsi7030_results_mmm = pd.DataFrame(columns=["Period", "Bank"])
+
+for x in range(10,201,5):
+    bank, result = calculate_rsi_profit_70_30(mmm, x)
+    rsi7030_results_mmm = rsi7030_results_mmm.append({"Period": x, "Bank": bank}, ignore_index=True)
+    
+rsi7030_results_mmm = rsi7030_results_mmm.sort_values(by="Bank", ascending = False)
+
+#VZ
+rsi7030_results_vz = pd.DataFrame(columns=["Period", "Bank"])
+
+for x in range(10,201,5):
+    bank, result = calculate_rsi_profit_70_30(vz, x)
+    rsi7030_results_vz = rsi7030_results_vz.append({"Period": x, "Bank": bank}, ignore_index=True)
+    
+rsi7030_results_vz = rsi7030_results_vz.sort_values(by="Bank", ascending = False)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
