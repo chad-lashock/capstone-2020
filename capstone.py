@@ -49,34 +49,58 @@ vz['ema200'] = vz['Price'].ewm(span=200, min_periods=200).mean()
 
 
 #----CAT----
-plt.figure(figsize = (12, 6))
-plt.plot(cat['Price'], label="Price", color="red")
+fig = plt.figure(figsize = (12, 6))
+ax = plt.axes()
+ax.set_facecolor('whitesmoke')
+plt.plot(cat['Price'], label="Price", color="black", linewidth=0.5)
 plt.legend()
 plt.grid()
+plt.xlabel("Date")
+plt.ylabel("Price ($)")
 plt.show()
+plt.close(fig)
 
-plt.figure(figsize = (12,6))
+fig = plt.figure(figsize = (12,6))
+ax = plt.axes()
+ax.set_facecolor('whitesmoke')
 plt.plot(cat['sma200'], label='200-day', color='blue')
 plt.plot(cat['sma50'], label='50-day', color='red')
 plt.legend()
 plt.grid()
 plt.show()
+plt.close(fig)
 
 #----MMM----
 
 plt.figure(figsize = (12,8))
+ax = plt.axes()
+ax.set_facecolor('whitesmoke')
 plt.plot(mmm['wma50'], label="50-day WMA", color="grey")
 plt.plot(mmm['wma200'], label="200-day WMA", color="green")
 plt.legend()
 plt.grid()
-plt.title("MMM Weighted Moving Averages")
 plt.xlabel("Date")
 plt.ylabel("Price ($)")
 plt.show()
+plt.close(fig)
 
 
 #----VZ----
-plt.figure(figsize = (12,8))
+fig = plt.figure(figsize = (12,6))
+ax = plt.axes()
+ax.set_facecolor('whitesmoke')
+plt.plot(vz['Price'], label="Price", color="black", linewidth=0.5)
+plt.legend()
+plt.grid()
+plt.ylabel("Price ($)")
+plt.xlabel("Date")
+plt.show()
+plt.close(fig)
+
+
+fig = plt.figure(figsize = (12,8))
+ax = plt.axes()
+ax.set_facecolor('whitesmoke')
 plt.plot(vz['ema50'], label='50-day EMA',color='grey')
 plt.plot(vz['ema200'],label='200-day EMA',color='red')
 plt.legend()
@@ -85,6 +109,7 @@ plt.title("VZ Exponential Moving Averages")
 plt.ylabel("Price ($)")
 plt.xlabel("Date")
 plt.show()
+plt.close(fig)
 
 
             
