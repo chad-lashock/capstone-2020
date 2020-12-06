@@ -12,14 +12,10 @@ from functions import calculate_rsi_profit_70_30
 
 #---CAT---
 cat = pd.read_csv("./data/CAT.csv")
-cat['Date'] = pd.to_datetime(cat['Date'])
 cat['Price'] = cat['Close']
 #cat.index = pd.to_datetime(cat.Date)
-cat = cat.drop(['Open','High','Low','Close','Adj Close'], axis=1)
-cat['Date'] = cat['Date'].dt.strftime('%m/%d/%Y')
+cat = cat.drop(['Open','High','Low','Close','Adj Close','Volume'], axis=1)
 
-cat['sma200'] = cat['Price'].rolling(200).mean()
-cat['sma50'] = cat['Price'].rolling(50).mean()
 
 #----MMM----
 mmm = pd.read_csv("./data/MMM.csv")
@@ -49,58 +45,34 @@ vz['ema200'] = vz['Price'].ewm(span=200, min_periods=200).mean()
 
 
 #----CAT----
-fig = plt.figure(figsize = (12, 6))
-ax = plt.axes()
-ax.set_facecolor('whitesmoke')
-plt.plot(cat['Price'], label="Price", color="black", linewidth=0.5)
+plt.figure(figsize = (12, 6))
+plt.plot(cat['Price'], label="Price", color="red")
 plt.legend()
 plt.grid()
-plt.xlabel("Date")
-plt.ylabel("Price ($)")
 plt.show()
-plt.close(fig)
 
-fig = plt.figure(figsize = (12,6))
-ax = plt.axes()
-ax.set_facecolor('whitesmoke')
+plt.figure(figsize = (12,6))
 plt.plot(cat['sma200'], label='200-day', color='blue')
 plt.plot(cat['sma50'], label='50-day', color='red')
 plt.legend()
 plt.grid()
 plt.show()
-plt.close(fig)
 
 #----MMM----
 
 plt.figure(figsize = (12,8))
-ax = plt.axes()
-ax.set_facecolor('whitesmoke')
 plt.plot(mmm['wma50'], label="50-day WMA", color="grey")
 plt.plot(mmm['wma200'], label="200-day WMA", color="green")
 plt.legend()
 plt.grid()
+plt.title("MMM Weighted Moving Averages")
 plt.xlabel("Date")
 plt.ylabel("Price ($)")
 plt.show()
-plt.close(fig)
 
 
 #----VZ----
-fig = plt.figure(figsize = (12,6))
-ax = plt.axes()
-ax.set_facecolor('whitesmoke')
-plt.plot(vz['Price'], label="Price", color="black", linewidth=0.5)
-plt.legend()
-plt.grid()
-plt.ylabel("Price ($)")
-plt.xlabel("Date")
-plt.show()
-plt.close(fig)
-
-
-fig = plt.figure(figsize = (12,8))
-ax = plt.axes()
-ax.set_facecolor('whitesmoke')
+plt.figure(figsize = (12,8))
 plt.plot(vz['ema50'], label='50-day EMA',color='grey')
 plt.plot(vz['ema200'],label='200-day EMA',color='red')
 plt.legend()
@@ -109,7 +81,6 @@ plt.title("VZ Exponential Moving Averages")
 plt.ylabel("Price ($)")
 plt.xlabel("Date")
 plt.show()
-plt.close(fig)
 
 
             

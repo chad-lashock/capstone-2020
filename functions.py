@@ -6,51 +6,36 @@ def calculate_annualized(begin, end):
 
 # function to calculate simple moving average profit
 def calculate_sma_profit(long_period, short_period, df):
-    long_ma = list(df['Price'].rolling(long_period).mean())
-    short_ma = list(df['Price'].rolling(short_period).mean())
+    df_copy = df.copy()
+    df_copy['long'] = df['Price'].rolling(long_period).mean()
+    df_copy['short'] = df['Price'].rolling(short_period).mean()
     results = pd.DataFrame(columns = ['Date','Action', 'Price', 'Bank', 'Shares'])
 
-    
     bank = 1000
     shares = 0
     
-    if short_ma[long_period-1] < long_ma[long_period-1]:
-        short_ma_under = True
-    else:
-        short_ma_under = False
-    
-    for x in range(long_period, len(long_ma)):
-        if short_ma_under == True and short_ma[x] > long_ma[x]:
+    for x in range(long_period, len(df_copy)):
+        if df_copy['short'].loc[x-1] <= df_copy['long'].loc[x-1] and df_copy['short'].loc[x] > df_copy['long'].loc[x]:
             # buy
-            short_ma_under = False
             if bank > 0:
                 shares = bank / df['Price'].loc[x]
                 bank = 0
                 results = results.append({'Date': df['Date'].loc[x], 'Action': 'Buy', 'Price': df['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
                                          ignore_index=True)
-                
-                
-        elif short_ma_under == False and short_ma[x] < long_ma[x]:
+                                
+        elif df_copy['short'].loc[x-1] >= df_copy['long'].loc[x-1] and df_copy['short'].loc[x] < df_copy['long'].loc[x]:
             # sell
-            short_ma_under = True
             if bank == 0:
                 bank = shares * df['Price'].loc[x]
                 shares = 0
                 results = results.append({'Date':df['Date'].loc[x], 'Action': 'Sell', 'Price': df['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
                                          ignore_index=True)
     
-    
     if shares > 0:
         bank = shares * df['Price'].loc[x]
         
     return bank, results
 
-
-#Input is array of price changes
-def calculate_rsi(x):
-    sum_of_gains = sum([a for a in x if a > 0])
-    sum_of_changes = sum([abs(a) for a in x])
-    return (sum_of_gains/sum_of_changes)*100
 
 # function to calculate weighted moving average profit
 def calculate_wma_profit(long_period, short_period, df):
@@ -137,7 +122,12 @@ def calculate_ema_profit(long_period, short_period, df):
         
     return bank, results
     
-    
+
+#Input is array of price changes
+def calculate_rsi(x):
+    sum_of_gains = sum([a for a in x if a > 0])
+    sum_of_changes = sum([abs(a) for a in x])
+    return (sum_of_gains/sum_of_changes)*100    
     
 #This method calculates the profit using the RSI crossover 50 strategy
 # Input is a dataframe of prices and a period that represents the 
@@ -151,24 +141,17 @@ def calculate_rsi_profit_50(df, period):
     bank = 1000
     shares = 0
     
-    if df_copy['rsi'].loc[period] < 50:
-        below_50 = True
-    else:
-        below_50 = False
-    
     for x in range(period+1, len(df_copy)):
-        if below_50 == True and df_copy['rsi'].loc[x] > 50:
+        if df_copy['rsi'].loc[x-1] <= 50 and df_copy['rsi'].loc[x] > 50:
             #buy
-            below_50 = False
             if bank > 0:
                 shares = bank / df_copy['Price'].loc[x]
                 bank = 0
                 results = results.append({'Date': df_copy['Date'].loc[x], 'Action': 'Buy', 'Price': df_copy['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
                                          ignore_index=True)
         
-        elif below_50 == False and df_copy['rsi'].loc[x] < 50:
+        elif df_copy['rsi'].loc[x-1] >= 50 and df_copy['rsi'].loc[x] < 50:
             #sell
-            below_50 = True
             if bank == 0:
                 bank = shares * df_copy['Price'].loc[x]
                 shares = 0
@@ -191,7 +174,7 @@ def calculate_rsi_profit_70_30(df, period):
     shares = 0
         
     for x in range(period+1, len(df_copy)):
-        if df_copy['rsi'].loc[x-1] >= 30 and df_copy['rsi'].loc[x] < 30:
+        if df_copy['rsi'].loc[x-1] <= 30 and df_copy['rsi'].loc[x] > 30:
             #buy
             if bank > 0:
                 shares = bank / df_copy['Price'].loc[x]
@@ -199,7 +182,7 @@ def calculate_rsi_profit_70_30(df, period):
                 results = results.append({'Date': df_copy['Date'].loc[x], 'Action': 'Buy', 'Price': df_copy['Price'].loc[x], 'Bank': bank, 'Shares': shares}, 
                                          ignore_index=True)
                 
-        elif df_copy['rsi'].loc[x-1] <= 70 and df_copy['rsi'].loc[x] > 70:
+        elif df_copy['rsi'].loc[x-1] >= 70 and df_copy['rsi'].loc[x] < 70:
             #sell
             if bank == 0:
                 bank = shares * df_copy['Price'].loc[x]
