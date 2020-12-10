@@ -1,104 +1,159 @@
-from pyomo.environ import *
 import pandas as pd
 import numpy as np
+from sklearn.model_selection import train_test_split
+from sklearn import svm
+from functions import prepare_for_ml
+from functions import find_best_intervals
+from sklearn.model_selection import GridSearchCV
 import matplotlib.pyplot as plt
-import statsmodels.api as sm
+from sklearn.metrics import confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
+from sklearn import preprocessing as pp
 
+
+##--------------Load Data--------------------
 
 cat = pd.read_csv("./data/CAT.csv")
 cat['Price'] = cat['Close']
 cat = cat.drop(['Open','High','Low','Close','Adj Close', 'Volume'], axis=1)
 
+mmm = pd.read_csv("./data/MMM.csv")
+mmm['Price'] = mmm['Close']
+mmm = mmm.drop(['Open','High','Low','Close','Adj Close', 'Volume'], axis=1)
+
+vz = pd.read_csv("./data/VZ.csv")
+vz['Price'] = vz['Close']
+vz = vz.drop(['Open','High','Low','Close','Adj Close', 'Volume'], axis=1)
 
 ##------Initial exploration and plotting--------------
 
 
 
+##-----------Find best intervals-----------
 
-##------------Computing best intervals------------
-model = ConcreteModel()
-model.buy = Var(range(len(cat)), domain=Boolean)
-model.sell = Var(range(len(cat)), domain=Boolean)
-
-
-model.profit = Objective(expr=sum(-1*model.buy[i]*cat['Price'].loc[i] + model.sell[i]*cat['Price'].loc[i] for i in range(len(cat))),sense=maximize)
-model.limits = ConstraintList()
-
-tx = 80 #Number of allowed transactions
-
-model.limits.add(sum(model.buy[i] for i in range(len(cat))) == tx)
-model.limits.add(sum(model.sell[i] for i in range(len(cat))) == tx)
-
-for x in range(len(cat)):
-    model.limits.add(sum(model.buy[i] for i in range(x+1)) - sum(model.sell[i] for i in range(x+1)) >= 0)
-    model.limits.add(sum(model.buy[i] for i in range(x+1)) - sum(model.sell[i] for i in range(x+1)) <= 1)
+cat = find_best_intervals(cat)
+mmm = find_best_intervals(mmm)
+vz = find_best_intervals(vz)
 
 
-solver = SolverFactory("glpk")
-solver.solve(model)
+##----------CAT SVM------------
+
+cat_svm = prepare_for_ml(cat)
+
+x = np.array(cat_svm.drop(['Date', 'State'], axis=1))
+y = np.array(cat_svm['State'])
+
+x = pp.scale(x)
+
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_state=2)
+
+svm_model = svm.SVC()
+
+grid_search = GridSearchCV(svm_model, param_grid = {"C": [x/10 for x in range(370,400,5)], 
+                           "gamma": [x/100 for x in range(230,270,5)]},
+                           cv=5,verbose=1,n_jobs=8,return_train_score=True)
+grid_search.fit(x_train,y_train)
+
+grid_search.best_params_
+grid_search.best_score_
+
+svm_model = svm.SVC(C=38,gamma=2.35)
+svm_model.fit(x_train,y_train)
+
+y_pred = svm_model.predict(x_test)
+
+conf_matrix = pd.DataFrame(confusion_matrix(y_test,y_pred, labels=[0,1]),
+                 index=['true:Out', 'true:Long'],
+                 columns=['pred:Out','pred:Long'])
 
 
-buy_idx_list = [x for x in range(len(cat)) if model.buy[x]() > 0]
-sell_idx_list = [x for x in range(len(cat)) if model.sell[x]() > 0]
+
+##-----------------MMM SVM---------------------
+
+mmm_svm = prepare_for_ml(mmm)
+
+x = np.array(mmm_svm.drop(['Date', 'State'], axis=1))
+y = np.array(mmm_svm['State'])
+
+x = pp.scale(x)
+
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_state=2)
+
+svm_model = svm.SVC()
+
+grid_search = GridSearchCV(svm_model, param_grid = {"C": [x/10 for x in range(460,510,5)], 
+                           "gamma": [x/10 for x in range(28,38,2)]},
+                           cv=5,verbose=1,n_jobs=8,return_train_score=True)
+grid_search.fit(x_train,y_train)
+
+grid_search.best_params_
+grid_search.best_score_
+
+svm_model = svm.SVC(C=47.5,gamma=3.2)
+svm_model.fit(x_train,y_train)
+
+y_pred = svm_model.predict(x_test)
+
+conf_matrix = pd.DataFrame(confusion_matrix(y_test,y_pred, labels=[0,1]),
+                 index=['true:Out', 'true:Long'],
+                 columns=['pred:Out','pred:Long'])
 
 
-##------------Manipulate data for modeling-------------
+##----------------VZ SVM--------------------
 
-cat['Action'] = 'Hold'
-cat['Action'].loc[buy_idx_list] = 'Buy'
-cat['Action'].loc[sell_idx_list] = 'Sell'
+vz_svm = prepare_for_ml(vz)
 
-#Calculate simple moving averages
-cat['sma10'] = cat['Price'].rolling(10).mean()
-cat['sma25'] = cat['Price'].rolling(25).mean()
-cat['sma50'] = cat['Price'].rolling(50).mean()
+x = np.array(vz_svm.drop(['Date', 'State'], axis=1))
+y = np.array(vz_svm['State'])
 
-#Calculate exponential moving averages
-cat['ema10'] = cat['Price'].ewm(span=10, min_periods=10).mean()
-cat['ema25'] = cat['Price'].ewm(span=25, min_periods=25).mean()
-cat['ema50'] = cat['Price'].ewm(span=50, min_periods=50).mean()
+x = pp.scale(x)
 
-#Calculate slopes for simple moving averages
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_state=2)
 
-cat['sma10_slope'] = np.nan
-cat['ema10_slope'] = np.nan
-cat['sma25_slope'] = np.nan
-cat['ema25_slope'] = np.nan
-cat['sma50_slope'] = np.nan
-cat['ema50_slope'] = np.nan
+svm_model = svm.SVC()
 
-x = [x for x in range(10)]
-x = sm.add_constant(x)
+grid_search = GridSearchCV(svm_model, param_grid = {"C": [23,23.5,24,24.5], 
+                           "gamma": [2.9,2.95,3,3.05,3.1,3.15]},
+                           cv=5,verbose=1,n_jobs=8,return_train_score=True)
+grid_search.fit(x_train,y_train)
 
-for i in range(18,len(cat)):
-    y = list(cat['sma10'].loc[i-9:i])
-    line = sm.OLS(y,x).fit()
-    cat['sma10_slope'].loc[i] = line.params[1]
-    
-    y = list(cat['ema10'].loc[i-9:i])
-    line = sm.OLS(y,x).fit()
-    cat['ema10_slope'].loc[i] = line.params[1]
-    
-for i in range(24,len(cat)):
-    y = list(cat['sma25'].loc[i-9:i])
-    line = sm.OLS(y,x).fit()
-    cat['sma25_slope'].loc[i] = line.params[1]
-    
-    y = list(cat['ema25'].loc[i-9:i])
-    line = sm.OLS(y,x).fit()
-    cat['ema25_slope'].loc[i] = line.params[1]
-    
-for i in range(49,len(cat)):
-    y = list(cat['sma50'].loc[i-9:i])
-    line = sm.OLS(y,x).fit()
-    cat['sma50_slope'].loc[i] = line.params[1]
-    
-    y = list(cat['ema50'].loc[i-9:i])
-    line = sm.OLS(y,x).fit()
-    cat['ema50_slope'].loc[i] = line.params[1]
-        
+grid_search.best_params_
+grid_search.best_score_
+
+svm_model = svm.SVC(C=24,gamma=3.1)
+svm_model.fit(x_train,y_train)
+
+y_pred = svm_model.predict(x_test)
+
+conf_matrix = pd.DataFrame(confusion_matrix(y_test,y_pred, labels=[0,1]),
+                 index=['true:Out', 'true:Long'],
+                 columns=['pred:Out','pred:Long'])
+
+x_train = x[:4135]
+y_train = y[:4135]
+x_test = x[4136:]
+y_test = y[4136:]
+
+svm_model = svm.SVC(C=24,gamma=3.1)
+svm_model.fit(x_train,y_train)
+
+y_pred = svm_model.predict(x_test)
+
+vz_pred = pd.DataFrame({'Date':pd.to_datetime(vz_svm[3103:]['Date']), 'Predict': y_pred})
 
 
+##-----------------Random Forest-------------------
+
+cat_rf = prepare_for_ml(cat)
+
+x = np.array(cat_rf.drop(['State', 'Date'], axis=1))
+y = np.array(cat_rf['State'])
+
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_state=2)
+
+
+rf_model = RandomForestClassifier(random_state=0)
+rf_model.fit(x_train, y_train)
 ##------------Plot best intervals--------------
 fig = plt.figure(figsize=(12,6))
 ax = plt.axes()
@@ -106,8 +161,8 @@ ax.set_facecolor('whitesmoke')
 
 plt.plot(cat['Price'], color="red", linewidth="0.5")
 
-for x in range(len(buy_idx_list)):
-    plt.plot(cat['Price'].loc[buy_idx_list[x]:sell_idx_list[x]], label="Long", color="green")
+# for x in range(len(buy_idx_list)):
+#     plt.plot(cat['Price'].loc[buy_idx_list[x]:sell_idx_list[x]], label="Long", color="green")
 
 plt.legend(["Out of the Market", "Long"])
 plt.grid()
@@ -116,6 +171,19 @@ plt.ylabel("Price ($)")
 plt.xticks([200,400,600], ["Jan", "Feb", "Mar"])
 plt.show()
 plt.close(fig)
+
+
+
+
+
+
+
+    
+
+
+
+
+
 
 
 

@@ -1,5 +1,8 @@
+from pyomo.environ import *
 import pandas as pd
 import numpy as np
+import statsmodels.api as sm
+
 
 def calculate_annualized(begin, end):
     return ((end/begin)**(365/(20*365+285)))-1
@@ -194,9 +197,107 @@ def calculate_rsi_profit_70_30(df, period):
         bank = shares * df_copy['Price'].loc[x]
         
     return bank, results
+
+
+def find_best_intervals(df):
+    df_copy = df.copy()
+    
+    model = ConcreteModel()
+    model.buy = Var(range(len(df_copy)), domain=Boolean)
+    model.sell = Var(range(len(df_copy)), domain=Boolean)
     
     
+    model.profit = Objective(expr=sum(-1*model.buy[i]*df_copy['Price'].loc[i] + model.sell[i]*df_copy['Price'].loc[i] for i in range(len(df_copy))),sense=maximize)
+    model.limits = ConstraintList()
     
+    tx = 80 #Number of allowed transactions
+    
+    model.limits.add(sum(model.buy[i] for i in range(len(df_copy))) == tx)
+    model.limits.add(sum(model.sell[i] for i in range(len(df_copy))) == tx)
+    
+    for x in range(len(df_copy)):
+        model.limits.add(sum(model.buy[i] for i in range(x+1)) - sum(model.sell[i] for i in range(x+1)) >= 0)
+        model.limits.add(sum(model.buy[i] for i in range(x+1)) - sum(model.sell[i] for i in range(x+1)) <= 1)
+    
+    
+    solver = SolverFactory("glpk")
+    solver.solve(model)
+    
+    
+    buy_idx_list = [x for x in range(len(df_copy)) if model.buy[x]() > 0]
+    sell_idx_list = [x for x in range(len(df_copy)) if model.sell[x]() > 0]
+    
+    
+    df_copy['State'] = 0
+    
+    for x in range(len(buy_idx_list)):
+        df_copy['State'].loc[buy_idx_list[x]:sell_idx_list[x]-1] = 1
+        
+    return df_copy    
+        
+        
+
+def prepare_for_ml(df):
+    df_copy = df.copy()
+    
+    #Calculate simple moving averages
+    df_copy['sma10'] = df_copy['Price'].rolling(10).mean()
+    df_copy['sma25'] = df_copy['Price'].rolling(25).mean()
+    df_copy['sma50'] = df_copy['Price'].rolling(50).mean()
+    
+    #Calculate exponential moving averages
+    df_copy['ema10'] = df_copy['Price'].ewm(span=10, min_periods=10).mean()
+    df_copy['ema25'] = df_copy['Price'].ewm(span=25, min_periods=25).mean()
+    df_copy['ema50'] = df_copy['Price'].ewm(span=50, min_periods=50).mean()
+    
+    #Calculate slopes for simple moving averages
+    
+    df_copy['sma10_slope'] = np.nan
+    df_copy['ema10_slope'] = np.nan
+    df_copy['sma25_slope'] = np.nan
+    df_copy['ema25_slope'] = np.nan
+    df_copy['sma50_slope'] = np.nan
+    df_copy['ema50_slope'] = np.nan
+    
+    x = [x for x in range(10)]
+    x = sm.add_constant(x)
+    
+    for i in range(18,len(df_copy)):
+        y = list(df_copy['sma10'].loc[i-9:i])
+        line = sm.OLS(y,x).fit()
+        df_copy['sma10_slope'].loc[i] = line.params[1]
+        
+        y = list(df_copy['ema10'].loc[i-9:i])
+        line = sm.OLS(y,x).fit()
+        df_copy['ema10_slope'].loc[i] = line.params[1]
+        
+    for i in range(24,len(df_copy)):
+        y = list(df_copy['sma25'].loc[i-9:i])
+        line = sm.OLS(y,x).fit()
+        df_copy['sma25_slope'].loc[i] = line.params[1]
+        
+        y = list(df_copy['ema25'].loc[i-9:i])
+        line = sm.OLS(y,x).fit()
+        df_copy['ema25_slope'].loc[i] = line.params[1]
+        
+    for i in range(49,len(df_copy)):
+        y = list(df_copy['sma50'].loc[i-9:i])
+        line = sm.OLS(y,x).fit()
+        df_copy['sma50_slope'].loc[i] = line.params[1]
+        
+        y = list(df_copy['ema50'].loc[i-9:i])
+        line = sm.OLS(y,x).fit()
+        df_copy['ema50_slope'].loc[i] = line.params[1]
+            
+    
+    df_copy = df_copy[58:len(df_copy)-1]
+    
+    
+    return df_copy
+    
+    
+
+        
     
     
     
