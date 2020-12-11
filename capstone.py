@@ -13,7 +13,6 @@ from functions import calculate_rsi_profit_70_30
 #---CAT---
 cat = pd.read_csv("./data/CAT.csv")
 cat['Price'] = cat['Close']
-#cat.index = pd.to_datetime(cat.Date)
 cat = cat.drop(['Open','High','Low','Close','Adj Close','Volume'], axis=1)
 
 

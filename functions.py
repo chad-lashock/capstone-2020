@@ -199,7 +199,7 @@ def calculate_rsi_profit_70_30(df, period):
     return bank, results
 
 
-def find_best_intervals(df):
+def find_best_intervals(df,tx):
     df_copy = df.copy()
     
     model = ConcreteModel()
@@ -209,8 +209,6 @@ def find_best_intervals(df):
     
     model.profit = Objective(expr=sum(-1*model.buy[i]*df_copy['Price'].loc[i] + model.sell[i]*df_copy['Price'].loc[i] for i in range(len(df_copy))),sense=maximize)
     model.limits = ConstraintList()
-    
-    tx = 80 #Number of allowed transactions
     
     model.limits.add(sum(model.buy[i] for i in range(len(df_copy))) == tx)
     model.limits.add(sum(model.sell[i] for i in range(len(df_copy))) == tx)
@@ -229,9 +227,10 @@ def find_best_intervals(df):
     
     
     df_copy['State'] = 0
-    
+
     for x in range(len(buy_idx_list)):
         df_copy['State'].loc[buy_idx_list[x]:sell_idx_list[x]-1] = 1
+
         
     return df_copy    
         
