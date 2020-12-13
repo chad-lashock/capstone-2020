@@ -2,6 +2,11 @@ from pyomo.environ import *
 import pandas as pd
 import numpy as np
 import statsmodels.api as sm
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
+from matplotlib import colors as mcolors
+from sklearn import preprocessing as pp
+from sklearn.model_selection import train_test_split
 
 
 def calculate_annualized(begin, end):
@@ -290,9 +295,123 @@ def prepare_for_ml(df):
             
     
     df_copy = df_copy[58:len(df_copy)-1]
+    df_copy.index = [x for x in range(len(df_copy))]
     
     
     return df_copy
+
+
+def plot_best_intervals(df):
+    line_list = []
+    colors = []
+    line_size = []
+    
+    x = 0
+    
+    while x < len(df):
+        
+        state = df['State'].loc[x]
+        line = []
+        
+        if state == 0:
+            colors.append(mcolors.to_rgb("black"))
+            line_size.append(0.5)
+        else:
+            colors.append(mcolors.to_rgb("green"))
+            line_size.append(1.0)
+            
+        while  x < len(df) and df['State'].loc[x] == state:
+            line.append((df.index[x],df['Price'].loc[x]))
+            x = x + 1
+            
+        line_list.append(line)
+        
+    
+    
+    fig = plt.figure(figsize=(12,6))
+    ax = plt.axes()
+    ax.set_facecolor('whitesmoke')
+    line_collection = LineCollection(line_list, linewidths=line_size,colors=colors)
+    ax.add_collection(line_collection)
+    ax.autoscale()
+    plt.grid()
+    plt.xlabel("Date")
+    plt.ylabel("Price ($)")
+    plt.xticks([0,500,1004,1508,2010,2515,3019,3521,4025,4528,5031],[y for y in range(2000,2021,2)])
+    plt.show()
+    
+    
+def calculate_interval_profit(df):
+    bank = 1000
+    shares = 0
+    state = 0
+    
+    for x in range(len(df)):
+        if state == 0 and df['State'].loc[x] == 1:
+            #buy
+            if bank > 0:
+                shares = bank / df['Price'].loc[x]
+                bank = 0
+        elif state == 1 and df['State'].loc[x] == 0:
+            #sell
+            if bank == 0:
+                bank = shares * df['Price'].loc[x]
+                shares = 0
+                
+        state = df['State'].loc[x]
+                
+    if shares > 0:
+        bank = shares * df['Price'].loc[x]
+        
+    return bank
+
+def prepare_for_svm_sequentially(df):
+    df_copy = prepare_for_ml(df)
+    
+    df_train = df_copy[:4136]
+    df_test = df_copy[4136:]
+    df_test.index = [i for i in range(len(df_test))]
+    
+    df_train = find_best_intervals(df_train, 64)
+    df_test = find_best_intervals(df_test, 16)
+    
+    df_train['sma10_scaled'] = pp.scale(df_train['sma10'])
+    df_train['sma25_scaled'] = pp.scale(df_train['sma25'])
+    df_train['sma50_scaled'] = pp.scale(df_train['sma50'])
+    df_train['ema10_scaled'] = pp.scale(df_train['ema10'])
+    df_train['ema25_scaled'] = pp.scale(df_train['ema25'])
+    df_train['ema50_scaled'] = pp.scale(df_train['ema50'])
+    
+    df_test['sma10_scaled'] = df_test['sma10'].apply(lambda x : (x-df_train['sma10'].mean())/df_train['sma10'].std())
+    df_test['sma25_scaled'] = df_test['sma25'].apply(lambda x : (x-df_train['sma25'].mean())/df_train['sma25'].std())
+    df_test['sma50_scaled'] = df_test['sma50'].apply(lambda x : (x-df_train['sma50'].mean())/df_train['sma50'].std())
+    df_test['ema10_scaled'] = df_test['ema10'].apply(lambda x : (x-df_train['ema10'].mean())/df_train['ema10'].std())
+    df_test['ema25_scaled'] = df_test['ema25'].apply(lambda x : (x-df_train['ema25'].mean())/df_train['ema25'].std())
+    df_test['ema50_scaled'] = df_test['ema50'].apply(lambda x : (x-df_train['ema50'].mean())/df_train['ema50'].std())
+    
+    x_train = np.array(df_train.drop(['Date','Price','State', 'sma10', 'sma25', 'sma50', 'ema10', 'ema25', 'ema50'],axis=1))
+    y_train = np.array(df_train['State'])
+    
+    x_test = np.array(df_test.drop(['Date','Price','State', 'sma10', 'sma25', 'sma50', 'ema10', 'ema25', 'ema50'],axis=1))
+    y_test = np.array(df_test['State'])
+    
+    return x_train, x_test, y_train, y_test
+
+def prepare_for_svm_random(df):
+    df_svm = prepare_for_ml(df)
+
+    x = np.array(df_svm.drop(['Date','Price','State'],axis=1))
+    y = np.array(df_svm['State'])
+    
+    x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_state=2)
+    
+    for i in range(0,6):
+        x_test[:,i] = (x_test[:,i]-np.mean(x_train[:,i]))/np.std(x_train[:,i])
+        
+    for i in range(0,6):
+        x_train[:,i] = pp.scale(x_train[:,i])
+        
+    return x_train, x_test, y_train, y_test
     
     
 
