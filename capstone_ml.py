@@ -6,12 +6,13 @@ from functions import find_best_intervals
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix
 from sklearn.ensemble import RandomForestClassifier
-from sklearn import preprocessing as pp
 from functions import plot_best_intervals
 from functions import calculate_interval_profit
 from functions import calculate_annualized
 from functions import prepare_for_svm_sequentially
 from functions import prepare_for_svm_random
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
 
 ##--------------Load Data--------------------
 
@@ -32,6 +33,9 @@ vz = vz.drop(['Open','High','Low','Close','Adj Close', 'Volume'], axis=1)
 
 ##-----------Find best intervals-----------
 
+cat = find_best_intervals(cat,80)
+mmm = find_best_intervals(mmm,80)
+vz = find_best_intervals(vz,80)
  
 
 ##----------Plot best intervals-----------
@@ -170,9 +174,9 @@ svm_model.score(x_test,y_test)
 
 y_pred = svm_model.predict(x_test)
 
-conf_matrix = pd.DataFrame(confusion_matrix(y_test,y_pred, labels=[0,1]),
-                 index=['true:Out', 'true:Long'],
-                 columns=['pred:Out','pred:Long'])
+mmm_pred = vz[4194:5227][['Date','Price']]
+mmm_pred.index = [x for x in range(len(mmm_pred))]
+mmm_pred['Pred'] = y_pred
 
 ##---------------Analysis with sequentially ordered data-----------------
 
@@ -212,9 +216,11 @@ bank = calculate_interval_profit(vz_pred)
 
 ##-----------------Random Forest-------------------
 
+
+##----------------CAT RF--------------------------
 cat_rf = prepare_for_ml(cat)
 
-x = x = np.array(cat_svm[['sma10_slope','sma25_slope','sma50_slope','ema10_slope','ema25_slope','ema50_slope']])
+x = np.array(cat_rf.drop(['Date','Price','State'],axis=1))
 y = np.array(cat_rf['State'])
 
 x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_state=2)
@@ -222,30 +228,114 @@ x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_sta
 
 rf_model = RandomForestClassifier(random_state=0,n_estimators=500)
 rf_model.fit(x_train, y_train)
-##------------Plot best intervals--------------
-fig = plt.figure(figsize=(12,6))
-ax = plt.axes()
-ax.set_facecolor('whitesmoke')
+rf_model.score(x_test,y_test)
 
-plt.plot(cat['Price'], color="red", linewidth="0.5")
+##---------------Analysis with sequentially ordered data-----------------
 
-# for x in range(len(buy_idx_list)):
-#     plt.plot(cat['Price'].loc[buy_idx_list[x]:sell_idx_list[x]], label="Long", color="green")
+df_train = cat_rf[:4136]
+df_test = cat_rf[4136:]
+df_test.index = [i for i in range(len(df_test))]
 
-plt.legend(["Out of the Market", "Long"])
-plt.grid()
-plt.xlabel("Date")
-plt.ylabel("Price ($)")
-plt.xticks([200,400,600], ["Jan", "Feb", "Mar"])
-plt.show()
-plt.close(fig)
+df_train = find_best_intervals(df_train, 64)
+df_test = find_best_intervals(df_test, 16)
+
+x_train = np.array(df_train.drop(['Date','Price','State'],axis=1))
+y_train = np.array(df_train['State'])
+x_test = np.array(df_test.drop(['Date','Price','State'],axis=1))
+y_test = np.array(df_test['State'])
+
+rf_model = RandomForestClassifier(random_state=0,n_estimators=500)
+rf_model.fit(x_train, y_train)
+rf_model.score(x_test,y_test)
+
+y_pred = rf_model.predict(x_test)
+
+cat_rf_pred = cat[4194:5227][['Date','Price']]
+cat_rf_pred.index = [x for x in range(len(cat_rf_pred))]
+cat_rf_pred['State'] = y_pred
+
+bank = calculate_interval_profit(cat_rf_pred)
+(bank/1000)**(365/1498)
+
+##-----------------------MMM RF-----------------------------------
+mmm_rf = prepare_for_ml(mmm)
+
+x = np.array(mmm_rf.drop(['Date','Price','State'],axis=1))
+y = np.array(mmm_rf['State'])
+
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_state=2)
 
 
+rf_model = RandomForestClassifier(random_state=0,n_estimators=500)
+rf_model.fit(x_train, y_train)
+rf_model.score(x_test,y_test)
+
+##---------------Analysis with sequentially ordered data-----------------
+
+df_train = mmm_rf[:4136]
+df_test = mmm_rf[4136:]
+df_test.index = [i for i in range(len(df_test))]
+
+df_train = find_best_intervals(df_train, 64)
+df_test = find_best_intervals(df_test, 16)
+
+x_train = np.array(df_train.drop(['Date','Price','State'],axis=1))
+y_train = np.array(df_train['State'])
+x_test = np.array(df_test.drop(['Date','Price','State'],axis=1))
+y_test = np.array(df_test['State'])
+
+rf_model = RandomForestClassifier(random_state=0,n_estimators=500)
+rf_model.fit(x_train, y_train)
+rf_model.score(x_test,y_test)
+
+y_pred = rf_model.predict(x_test)
+
+mmm_rf_pred = mmm[4194:5227][['Date','Price']]
+mmm_rf_pred.index = [x for x in range(len(mmm_rf_pred))]
+mmm_rf_pred['State'] = y_pred
+
+bank = calculate_interval_profit(mmm_rf_pred)
+(bank/1000)**(365/1498)
+
+##-----------------------VZ RF-----------------------------------
+vz_rf = prepare_for_ml(vz)
+
+x = np.array(vz_rf.drop(['Date','Price','State'],axis=1))
+y = np.array(vz_rf['State'])
+
+x_train, x_test, y_train, y_test = train_test_split(x,y,test_size=0.1,random_state=2)
 
 
+rf_model = RandomForestClassifier(random_state=0,n_estimators=500)
+rf_model.fit(x_train, y_train)
+rf_model.score(x_test,y_test)
 
+##---------------Analysis with sequentially ordered data-----------------
 
+df_train = vz_rf[:4136]
+df_test = vz_rf[4136:]
+df_test.index = [i for i in range(len(df_test))]
 
+df_train = find_best_intervals(df_train, 64)
+df_test = find_best_intervals(df_test, 16)
+
+x_train = np.array(df_train.drop(['Date','Price','State'],axis=1))
+y_train = np.array(df_train['State'])
+x_test = np.array(df_test.drop(['Date','Price','State'],axis=1))
+y_test = np.array(df_test['State'])
+
+rf_model = RandomForestClassifier(random_state=0,n_estimators=500)
+rf_model.fit(x_train, y_train)
+rf_model.score(x_test,y_test)
+
+y_pred = rf_model.predict(x_test)
+
+vz_rf_pred = vz[4194:5227][['Date','Price']]
+vz_rf_pred.index = [x for x in range(len(vz_rf_pred))]
+vz_rf_pred['State'] = y_pred
+
+bank = calculate_interval_profit(vz_rf_pred)
+(bank/1000)**(365/1498)
     
 
 
